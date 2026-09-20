@@ -9,10 +9,16 @@ final class MenuBarController {
     private let modelLabel: NSMenuItem
     private let stateLabel: NSMenuItem
     private let modelID: String
+    private let language: String
     private let idleHint: String
 
-    init(modelID: String, idleHint: String = "idle · hold fn to dictate") {
+    init(
+        modelID: String,
+        language: String = ParrotConfig.defaultLanguage,
+        idleHint: String = "idle · hold fn to dictate"
+    ) {
         self.modelID = modelID
+        self.language = language
         self.idleHint = idleHint
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
@@ -23,7 +29,7 @@ final class MenuBarController {
         stateLabel.isEnabled = false
         menu.addItem(stateLabel)
 
-        modelLabel = NSMenuItem(title: "model: \(modelID)", action: nil, keyEquivalent: "")
+        modelLabel = NSMenuItem(title: "model: \(modelID) · \(language)", action: nil, keyEquivalent: "")
         modelLabel.isEnabled = false
         menu.addItem(modelLabel)
 

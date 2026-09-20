@@ -72,6 +72,8 @@ Subcommands:
 - `parrot models list` — show registered models, mark which are downloaded
 - `parrot models download <id>` — pre-fetch a model
 - `parrot doctor` — check microphone and accessibility permissions, print remediation steps
+- `parrot setup` — permissions, then first-run model/language prompt
+- `parrot config` — get/set persistent model and language (`~/.config/parrot/config.toml`)
 
 ### `HotkeyMonitor`
 
@@ -157,16 +159,16 @@ On first selection (or via `parrot models download <id>`), downloads to `~/Libra
 
 ### `Config`
 
-Plain `Codable` struct. Loaded from (in order): CLI flags > `~/.config/parrot/config.toml` > defaults.
+Tiny TOML subset at `~/.config/parrot/config.toml`. Loaded from (in order): CLI flags > this file > defaults.
 
 ```toml
-model = "whisper-large-v3-turbo"
-hotkey = "fn"
-inject_mode = "paste"   # or "type-unicode"
-overlay = true          # show recording pill at bottom of screen
+model = "whisper-base.en"
+language = "en"
 ```
 
-CLI flags override the file. No settings UI; you edit the TOML.
+Managed via `parrot config` (`list` / `get` / `set` / `unset` / `path`). `parrot setup` writes this file on first run after asking model + language (enter keeps the defaults). CLI `--model` / `--language` override the file for that process and do not write it.
+
+English-only models reject non-`en` languages. Setting `language` to something else while an `.en` model is selected switches the stored model to the first multilingual entry (`whisper-large-v3-turbo`).
 
 ## Permissions
 
@@ -235,6 +237,7 @@ parrot/
   Sources/parrot/
     main.swift                  # entry point, argument parsing, NSApp.run()
     Config.swift
+    ConfigCommand.swift
     Doctor.swift
 
     Transcription/              # the inference layer

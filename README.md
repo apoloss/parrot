@@ -6,7 +6,7 @@ A minimal macOS dictation daemon. Push-to-talk or double-tap toggle, on-device t
 
 ```sh
 curl -fsSL https://digimata.github.io/parrot/install.sh | sh
-parrot setup                       # grants mic + accessibility, downloads the model
+parrot setup                       # grants mic + accessibility, asks model/language, downloads
 parrot install --launch-at-login   # optional — runs in the background on login
 ```
 
@@ -38,18 +38,25 @@ A single tap while idle does nothing — that way accidental `fn` presses don't 
 
 ```sh
 parrot                                 # run in the foreground (^C to quit)
-parrot setup                           # one-time setup: permissions + model download
+parrot setup                           # first run: permissions + model/language + download
 parrot install --launch-at-login       # register a LaunchAgent (background daemon)
 parrot install --launch-at-login --toggle  # same, with double-tap toggle mode
 parrot install --uninstall             # remove the LaunchAgent
 parrot doctor                          # check permissions + fn key setting
 parrot models list                     # list available models
 parrot models download <id>            # pre-download a model
-parrot --model whisper-large-v3-turbo  # bigger, multilingual, slower first-run
+parrot config                          # show model + language
+parrot config set model whisper-large-v3-turbo
+parrot config set language es
+parrot config get language
+parrot --model whisper-large-v3-turbo  # one-shot override (does not write config)
+parrot --language es                   # one-shot override
 parrot --toggle                        # double-tap fn to start, tap once to stop
 parrot --hotkey right-option           # change the push-to-talk key
 parrot --no-overlay                    # disable the bottom-of-screen pill
 ```
+
+Config lives at `~/.config/parrot/config.toml`. Flags override the file; the file overrides the built-in defaults (`whisper-base.en`, `en`). English-only models (`whisper-base.en`, `whisper-small.en`) cannot be paired with a non-English language — `parrot config set language es` will switch you to `whisper-large-v3-turbo`.
 
 ## Stack
 

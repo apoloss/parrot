@@ -8,7 +8,7 @@ struct Parrot: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "parrot",
         abstract: "Minimal macOS dictation daemon. Hold Fn to talk, or --toggle for double-tap.",
-        subcommands: [Run.self, Setup.self, Doctor.self, Models.self, Install.self],
+        subcommands: [Run.self, Setup.self, Doctor.self, Models.self, Install.self, ConfigCommand.self],
         defaultSubcommand: Run.self
     )
 }
@@ -37,8 +37,11 @@ struct Run: ParsableCommand {
     )
     var toggle: Bool = false
 
-    @Option(name: .long, help: "Model id to use. Defaults to the recommended model.")
+    @Option(name: .long, help: "Model id to use. Overrides config / default.")
     var model: String?
+
+    @Option(name: .long, help: "Language ISO code (en, es, pt, …). Overrides config / default.")
+    var language: String?
 
     func run() throws {
         if !skipDoctor {
@@ -52,22 +55,18 @@ struct Run: ParsableCommand {
         }
 
         let chosenModel: TranscriptionModel
-        if let id = model {
-            guard let m = ModelRegistry.find(id) else {
-                FileHandle.standardError.write(Data("unknown model: \(id)\n".utf8))
-                FileHandle.standardError.write(Data("run `parrot models list` to see options.\n".utf8))
-                throw ExitCode(1)
-            }
-            chosenModel = m
-        } else {
-            guard let m = ModelRegistry.recommended() else {
-                FileHandle.standardError.write(Data("no models registered\n".utf8))
-                throw ExitCode(1)
-            }
-            chosenModel = m
+        let chosenLanguage: String
+        do {
+            (chosenModel, chosenLanguage) = try ConfigResolver.resolve(
+                cliModel: model,
+                cliLanguage: language
+            )
+        } catch {
+            FileHandle.standardError.write(Data("\(error)\n".utf8))
+            throw ExitCode(1)
         }
 
-        let transcriber = WhisperKitTranscriber(model: chosenModel)
+        let transcriber = WhisperKitTranscriber(model: chosenModel, language: chosenLanguage)
         let warmupSemaphore = DispatchSemaphore(value: 0)
         var warmupError: Error?
         Task.detached {
@@ -101,7 +100,11 @@ struct Run: ParsableCommand {
         }
         let idleHint = toggle ? "idle · double-tap fn to dictate" : "idle · hold fn to dictate"
         let menuBar = MainActor.assumeIsolated {
-            MenuBarController(modelID: chosenModel.id, idleHint: idleHint)
+            MenuBarController(
+                modelID: chosenModel.id,
+                language: chosenLanguage,
+                idleHint: idleHint
+            )
         }
 
         do {
@@ -186,7 +189,9 @@ struct Run: ParsableCommand {
         let listenHint = toggle
             ? "listening on fn double-tap toggle"
             : "listening on fn hold"
-        FileHandle.standardError.write(Data("\(listenHint) · model: \(chosenModel.id) · ^C to quit\n".utf8))
+        FileHandle.standardError.write(
+            Data("\(listenHint) · model: \(chosenModel.id) · language: \(chosenLanguage) · ^C to quit\n".utf8)
+        )
         app.run()
     }
 }
