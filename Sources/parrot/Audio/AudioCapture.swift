@@ -15,72 +15,113 @@ final class AudioCapture {
     private let engine = AVAudioEngine()
     private var converter: AVAudioConverter?
     private var samples: [Float] = []
-    private var isRecording = false
+    private var capturing = false
+    private var tapInstalled = false
     private let lock = NSLock()
+    private let targetFormat = AVAudioFormat(
+        commonFormat: .pcmFormatFloat32,
+        sampleRate: AudioCapture.targetSampleRate,
+        channels: 1,
+        interleaved: false
+    )!
 
     /// Called for every audio buffer with the buffer's RMS level (0…~1).
     /// Invoked on an arbitrary thread; hop to main if you touch UI.
     var onLevel: ((Float) -> Void)?
 
+    deinit {
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+        }
+        if engine.isRunning {
+            engine.stop()
+        }
+    }
+
     /// Begin recording. Idempotent — calling while already recording is a no-op.
+    ///
+    /// The engine and tap stay up between takes. Stopping/reinstalling the tap
+    /// after the first capture is what threw `format mismatch` on the second
+    /// `fn` press (hardware format can change once the input node has run).
     func start() throws {
-        guard !isRecording else { return }
-
-        let input = engine.inputNode
-        let inputFormat = input.outputFormat(forBus: 0)
-
-        let targetFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: AudioCapture.targetSampleRate,
-            channels: 1,
-            interleaved: false
-        )!
-
-        guard let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else {
-            throw CaptureError.converterCreationFailed
-        }
-        self.converter = converter
-
         lock.lock()
-        samples.removeAll(keepingCapacity: true)
+        let already = capturing
+        if !already {
+            samples.removeAll(keepingCapacity: true)
+            capturing = true
+        }
+        let needsEngine = !engine.isRunning
         lock.unlock()
+        if already { return }
 
-        // Tap with input format; convert inside the callback.
-        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
-            self?.process(buffer: buffer, converter: converter, targetFormat: targetFormat)
+        if needsEngine {
+            do {
+                try activateEngine()
+            } catch {
+                lock.lock()
+                capturing = false
+                lock.unlock()
+                throw error
+            }
         }
-
-        engine.prepare()
-        do {
-            try engine.start()
-        } catch {
-            input.removeTap(onBus: 0)
-            throw CaptureError.engineStartFailed(error)
-        }
-
-        isRecording = true
     }
 
     /// Stop recording and return all captured samples (16 kHz mono Float32).
+    /// Leaves the engine running so the next `start()` does not reinstall the tap.
     @discardableResult
     func stop() -> [Float] {
-        guard isRecording else { return [] }
-        engine.stop()
-        engine.inputNode.removeTap(onBus: 0)
-        isRecording = false
-
         lock.lock()
+        capturing = false
         let captured = samples
         samples.removeAll(keepingCapacity: true)
         lock.unlock()
         return captured
     }
 
-    private func process(
-        buffer: AVAudioPCMBuffer,
-        converter: AVAudioConverter,
-        targetFormat: AVAudioFormat
-    ) {
+    private func activateEngine() throws {
+        let input = engine.inputNode
+        if tapInstalled {
+            input.removeTap(onBus: 0)
+            tapInstalled = false
+        }
+
+        // `format: nil` uses the node's native hardware format. Passing a
+        // cached AVAudioFormat here is what crashed on the second take.
+        input.installTap(onBus: 0, bufferSize: 4096, format: nil) { [weak self] buffer, _ in
+            self?.process(buffer: buffer)
+        }
+        tapInstalled = true
+
+        engine.prepare()
+        do {
+            try engine.start()
+        } catch {
+            input.removeTap(onBus: 0)
+            tapInstalled = false
+            throw CaptureError.engineStartFailed(error)
+        }
+    }
+
+    private func process(buffer: AVAudioPCMBuffer) {
+        lock.lock()
+        let shouldCapture = capturing
+        lock.unlock()
+        guard shouldCapture else { return }
+
+        let converter: AVAudioConverter
+        if let existing = self.converter,
+           existing.inputFormat.sampleRate == buffer.format.sampleRate,
+           existing.inputFormat.channelCount == buffer.format.channelCount
+        {
+            converter = existing
+        } else {
+            guard let created = AVAudioConverter(from: buffer.format, to: targetFormat) else {
+                return
+            }
+            self.converter = created
+            converter = created
+        }
+
         // Output buffer capacity scales with sample-rate ratio.
         let ratio = targetFormat.sampleRate / buffer.format.sampleRate
         let outCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 64
@@ -110,10 +151,12 @@ final class AudioCapture {
         let chunk = Array(UnsafeBufferPointer(start: ptr, count: count))
 
         lock.lock()
-        samples.append(contentsOf: chunk)
+        if capturing {
+            samples.append(contentsOf: chunk)
+        }
         lock.unlock()
 
-        if let onLevel {
+        if shouldCapture, let onLevel {
             onLevel(computeRMS(chunk))
         }
     }
