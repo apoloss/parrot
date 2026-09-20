@@ -17,7 +17,7 @@ struct Install: ParsableCommand {
     @Flag(name: .long, help: "Remove the launch-at-login agent.")
     var uninstall: Bool = false
 
-    @Flag(name: .long, help: "Use toggle mode (double-tap Fn) in the LaunchAgent.")
+    @Flag(name: .long, help: "Enable double-tap latch in addition to hold-to-talk.")
     var toggle: Bool = false
 
     func run() throws {

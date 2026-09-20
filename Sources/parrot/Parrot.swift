@@ -7,7 +7,7 @@ import WhisperKit
 struct Parrot: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "parrot",
-        abstract: "Minimal macOS dictation daemon. Hold Fn to talk, or --toggle for double-tap.",
+        abstract: "Minimal macOS dictation daemon. Hold Fn to talk; --toggle also latches on double-tap.",
         subcommands: [Run.self, Setup.self, Doctor.self, Models.self, Install.self, ConfigCommand.self],
         defaultSubcommand: Run.self
     )
@@ -33,7 +33,7 @@ struct Run: ParsableCommand {
 
     @Flag(
         name: .long,
-        help: "Toggle mode: double-tap Fn to start recording, tap Fn once to stop."
+        help: "Also latch on double-tap Fn. Hold-to-talk still works."
     )
     var toggle: Bool = false
 
@@ -98,7 +98,7 @@ struct Run: ParsableCommand {
         if let overlay {
             capture.onLevel = { level in overlay.pushLevel(level) }
         }
-        let idleHint = toggle ? "idle · double-tap fn to dictate" : "idle · hold fn to dictate"
+        let idleHint = toggle ? "idle · hold or double-tap fn" : "idle · hold fn to dictate"
         let menuBar = MainActor.assumeIsolated {
             MenuBarController(
                 modelID: chosenModel.id,
@@ -120,6 +120,12 @@ struct Run: ParsableCommand {
                         }
                     } catch {
                         FileHandle.standardError.write(Data("capture failed: \(error)\n".utf8))
+                    }
+                case .cancelled:
+                    _ = capture.stop()
+                    MainActor.assumeIsolated {
+                        overlay?.hide()
+                        menuBar.setRecording(false)
                     }
                 case .released:
                     let samples = capture.stop()
@@ -187,7 +193,7 @@ struct Run: ParsableCommand {
         signal(SIGINT, SIG_IGN)
 
         let listenHint = toggle
-            ? "listening on fn double-tap toggle"
+            ? "listening on fn hold + double-tap toggle"
             : "listening on fn hold"
         FileHandle.standardError.write(
             Data("\(listenHint) · model: \(chosenModel.id) · language: \(chosenLanguage) · ^C to quit\n".utf8)

@@ -7,7 +7,7 @@ import Foundation
 /// Requires Accessibility permission. If the tap fails to register, callers
 /// will see an error from `start()`.
 final class HotkeyMonitor {
-    enum Event { case pressed, released }
+    enum Event { case pressed, released, cancelled }
     enum HotkeyError: Error { case tapCreateFailed }
 
     /// Mask of the modifier we treat as the hotkey. Fn = `.maskSecondaryFn`.
@@ -27,7 +27,10 @@ final class HotkeyMonitor {
     ) {
         self.mask = mask
         self.debug = debug
-        self.interpreter = HotkeyGestureInterpreter(mode: mode, doubleTapWindow: doubleTapWindow)
+        self.interpreter = HotkeyGestureInterpreter(
+            mode: mode,
+            doubleTapWindow: doubleTapWindow
+        )
     }
 
     func start(onEvent: @escaping (Event) -> Void) throws {

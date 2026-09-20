@@ -25,12 +25,12 @@ That's it. There is no record button, no stop button, no "send" — `fn` is the 
 
 ### Toggle mode
 
-If you'd rather not hold `fn` the whole time, start with `parrot --toggle`:
+If you'd rather not hold `fn` the whole time, start with `parrot --toggle`. Hold-to-talk stays available:
 
-1. **Double-tap `fn`** to turn recording **ON**. Speak freely.
-2. **Tap `fn` once** to turn it **OFF**. The transcript types itself in at the cursor.
+- **Hold `fn`** — push-to-talk, same as always. Release to transcribe.
+- **Double-tap `fn`** — recording stays **ON** until you tap `fn` once.
 
-A single tap while idle does nothing — that way accidental `fn` presses don't start the mic. The double-tap window follows your macOS double-click speed (System Settings → Desktop & Dock → Double-click speed).
+A single short tap while idle does nothing — that way accidental `fn` presses don't start the mic. The double-tap window follows your macOS double-click speed (System Settings → Desktop & Dock → Double-click speed).
 
 > **Note:** on most modern Macs the `fn` key is the bottom-left key. If yours is set to "Change input source" or "Show emoji & symbols," `parrot setup` will tell you how to flip it back to plain `fn`.
 
@@ -51,7 +51,7 @@ parrot config set language es
 parrot config get language
 parrot --model whisper-large-v3-turbo  # one-shot override (does not write config)
 parrot --language es                   # one-shot override
-parrot --toggle                        # double-tap fn to start, tap once to stop
+parrot --toggle                        # hold-to-talk plus double-tap latch
 parrot --hotkey right-option           # change the push-to-talk key
 parrot --no-overlay                    # disable the bottom-of-screen pill
 ```

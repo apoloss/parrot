@@ -82,7 +82,7 @@ Global hotkey via `CGEventTap` (requires Accessibility permission). Default: **h
 `HotkeyGestureInterpreter` sits between those raw edges and the recorder:
 
 - **hold** (default) — press → start, release → stop.
-- **toggle** (`--toggle`) — two Fn taps within `NSEvent.doubleClickInterval` → start; a single tap while recording → stop. The stop-tap's matching release is consumed so it cannot seed the next double-tap.
+- **toggle** (`--toggle`) — hold is still push-to-talk. A press shorter than 200ms is a tap: one tap cancels, two taps within `NSEvent.doubleClickInterval` latch recording on. A tap while latched stops. The stop-tap's matching release is consumed so it cannot seed the next double-tap.
 
 **Fn key caveat:** macOS by default maps the Fn (🌐) key to "Show Emoji & Symbols" or "Start Dictation" depending on the user's setting in System Settings → Keyboard → Press 🌐 key to. The CGEventTap sees the keypress regardless, but the system action also fires. `parrot doctor` will detect this setting and instruct the user to change it to "Do Nothing" so Fn becomes a clean modifier.
 
