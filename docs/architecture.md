@@ -3,7 +3,7 @@
 ## Goals
 
 1. **CLI executable.** Single binary, launched from the terminal. No menubar, no dock icon, no settings window.
-2. **Push-to-talk.** Hold Fn, speak, release — transcript appears at the cursor.
+2. **Push-to-talk or toggle.** Hold Fn, speak, release — or `--toggle` to double-tap Fn on / tap Fn off. Transcript appears at the cursor.
 3. **Minimal recording feedback.** A small floating pill at the bottom of the screen while recording, so the user knows the mic is hot. Click-through, borderless, hidden when idle.
 4. **On-device.** No network calls for transcription. Audio never leaves the machine.
 5. **Pluggable models.** Whisper out of the box; Parakeet (or future engines) via a JSON-driven registry.
@@ -76,6 +76,11 @@ Subcommands:
 ### `HotkeyMonitor`
 
 Global hotkey via `CGEventTap` (requires Accessibility permission). Default: **hold Fn**. Detected via `flagsChanged` events with `NSEvent.ModifierFlags.function` / `kCGEventFlagMaskSecondaryFn`. Emits `.pressed` / `.released`. Configurable via `--hotkey` flag or config file.
+
+`HotkeyGestureInterpreter` sits between those raw edges and the recorder:
+
+- **hold** (default) — press → start, release → stop.
+- **toggle** (`--toggle`) — two Fn taps within `NSEvent.doubleClickInterval` → start; a single tap while recording → stop. The stop-tap's matching release is consumed so it cannot seed the next double-tap.
 
 **Fn key caveat:** macOS by default maps the Fn (🌐) key to "Show Emoji & Symbols" or "Start Dictation" depending on the user's setting in System Settings → Keyboard → Press 🌐 key to. The CGEventTap sees the keypress regardless, but the system action also fires. `parrot doctor` will detect this setting and instruct the user to change it to "Do Nothing" so Fn becomes a clean modifier.
 

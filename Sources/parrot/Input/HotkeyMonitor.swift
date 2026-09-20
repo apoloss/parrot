@@ -13,14 +13,21 @@ final class HotkeyMonitor {
     /// Mask of the modifier we treat as the hotkey. Fn = `.maskSecondaryFn`.
     private let mask: CGEventFlags
     private let debug: Bool
+    private let interpreter: HotkeyGestureInterpreter
     private var onEvent: ((Event) -> Void)?
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var isPressed = false
 
-    init(mask: CGEventFlags = .maskSecondaryFn, debug: Bool = false) {
+    init(
+        mask: CGEventFlags = .maskSecondaryFn,
+        debug: Bool = false,
+        mode: HotkeyGestureInterpreter.Mode = .hold,
+        doubleTapWindow: TimeInterval = HotkeyGestureInterpreter.defaultDoubleTapWindow
+    ) {
         self.mask = mask
         self.debug = debug
+        self.interpreter = HotkeyGestureInterpreter(mode: mode, doubleTapWindow: doubleTapWindow)
     }
 
     func start(onEvent: @escaping (Event) -> Void) throws {
@@ -90,7 +97,10 @@ final class HotkeyMonitor {
         let pressed = event.flags.contains(mask)
         guard pressed != isPressed else { return }
         isPressed = pressed
-        onEvent?(pressed ? .pressed : .released)
+        let raw: Event = pressed ? .pressed : .released
+        if let interpreted = interpreter.handle(raw) {
+            onEvent?(interpreted)
+        }
     }
 }
 

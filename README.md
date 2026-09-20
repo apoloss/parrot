@@ -1,6 +1,6 @@
 # parrot
 
-A minimal macOS dictation daemon. Push-to-talk, on-device transcription, text inserted at the cursor.
+A minimal macOS dictation daemon. Push-to-talk or double-tap toggle, on-device transcription, text inserted at the cursor.
 
 ## Install
 
@@ -23,6 +23,15 @@ The installer drops the binary in `/usr/local/bin/parrot`. Builds are unsigned f
 
 That's it. There is no record button, no stop button, no "send" — `fn` is the whole interface.
 
+### Toggle mode
+
+If you'd rather not hold `fn` the whole time, start with `parrot --toggle`:
+
+1. **Double-tap `fn`** to turn recording **ON**. Speak freely.
+2. **Tap `fn` once** to turn it **OFF**. The transcript types itself in at the cursor.
+
+A single tap while idle does nothing — that way accidental `fn` presses don't start the mic. The double-tap window follows your macOS double-click speed (System Settings → Desktop & Dock → Double-click speed).
+
 > **Note:** on most modern Macs the `fn` key is the bottom-left key. If yours is set to "Change input source" or "Show emoji & symbols," `parrot setup` will tell you how to flip it back to plain `fn`.
 
 ## CLI
@@ -31,11 +40,13 @@ That's it. There is no record button, no stop button, no "send" — `fn` is the 
 parrot                                 # run in the foreground (^C to quit)
 parrot setup                           # one-time setup: permissions + model download
 parrot install --launch-at-login       # register a LaunchAgent (background daemon)
+parrot install --launch-at-login --toggle  # same, with double-tap toggle mode
 parrot install --uninstall             # remove the LaunchAgent
 parrot doctor                          # check permissions + fn key setting
 parrot models list                     # list available models
 parrot models download <id>            # pre-download a model
 parrot --model whisper-large-v3-turbo  # bigger, multilingual, slower first-run
+parrot --toggle                        # double-tap fn to start, tap once to stop
 parrot --hotkey right-option           # change the push-to-talk key
 parrot --no-overlay                    # disable the bottom-of-screen pill
 ```

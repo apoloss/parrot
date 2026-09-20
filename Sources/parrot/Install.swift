@@ -17,6 +17,9 @@ struct Install: ParsableCommand {
     @Flag(name: .long, help: "Remove the launch-at-login agent.")
     var uninstall: Bool = false
 
+    @Flag(name: .long, help: "Use toggle mode (double-tap Fn) in the LaunchAgent.")
+    var toggle: Bool = false
+
     func run() throws {
         if launchAtLogin == uninstall {
             FileHandle.standardError.write(Data(
@@ -45,10 +48,12 @@ struct Install: ParsableCommand {
 
     private func writeAgent() throws {
         let binary = try resolveBinaryPath()
+        var args = [binary, "run", "--skip-doctor"]
+        if toggle { args.append("--toggle") }
 
         let plist: [String: Any] = [
             "Label": Self.label,
-            "ProgramArguments": [binary, "run", "--skip-doctor"],
+            "ProgramArguments": args,
             "RunAtLoad": true,
             "KeepAlive": ["SuccessfulExit": false] as [String: Any],
             "ProcessType": "Interactive",

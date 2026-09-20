@@ -7,7 +7,7 @@ import WhisperKit
 struct Parrot: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "parrot",
-        abstract: "Minimal macOS dictation daemon. Hold Fn, speak, release.",
+        abstract: "Minimal macOS dictation daemon. Hold Fn to talk, or --toggle for double-tap.",
         subcommands: [Run.self, Setup.self, Doctor.self, Models.self, Install.self],
         defaultSubcommand: Run.self
     )
@@ -30,6 +30,12 @@ struct Run: ParsableCommand {
 
     @Flag(name: .long, help: "Disable the on-screen recording overlay.")
     var noOverlay: Bool = false
+
+    @Flag(
+        name: .long,
+        help: "Toggle mode: double-tap Fn to start recording, tap Fn once to stop."
+    )
+    var toggle: Bool = false
 
     @Option(name: .long, help: "Model id to use. Defaults to the recommended model.")
     var model: String?
@@ -81,14 +87,22 @@ struct Run: ParsableCommand {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
 
-        let monitor = HotkeyMonitor(debug: debugHotkey)
+        let doubleTapWindow = NSEvent.doubleClickInterval
+        let monitor = HotkeyMonitor(
+            debug: debugHotkey,
+            mode: toggle ? .toggle : .hold,
+            doubleTapWindow: doubleTapWindow
+        )
         let capture = AudioCapture()
         let dumpWav = self.dumpWav
         let overlay: RecordingOverlay? = noOverlay ? nil : MainActor.assumeIsolated { RecordingOverlay() }
         if let overlay {
             capture.onLevel = { level in overlay.pushLevel(level) }
         }
-        let menuBar = MainActor.assumeIsolated { MenuBarController(modelID: chosenModel.id) }
+        let idleHint = toggle ? "idle · double-tap fn to dictate" : "idle · hold fn to dictate"
+        let menuBar = MainActor.assumeIsolated {
+            MenuBarController(modelID: chosenModel.id, idleHint: idleHint)
+        }
 
         do {
             try monitor.start { event in
@@ -169,7 +183,10 @@ struct Run: ParsableCommand {
         sigint.resume()
         signal(SIGINT, SIG_IGN)
 
-        FileHandle.standardError.write(Data("listening on fn hold · model: \(chosenModel.id) · ^C to quit\n".utf8))
+        let listenHint = toggle
+            ? "listening on fn double-tap toggle"
+            : "listening on fn hold"
+        FileHandle.standardError.write(Data("\(listenHint) · model: \(chosenModel.id) · ^C to quit\n".utf8))
         app.run()
     }
 }

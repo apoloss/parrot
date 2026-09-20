@@ -14,7 +14,7 @@ struct Setup: ParsableCommand {
         print()
         print("Parrot needs two permissions:")
         print("  1. Accessibility — to detect the Fn key globally and inject text at the cursor.")
-        print("  2. Microphone — to record audio while you hold Fn.")
+        print("  2. Microphone — to record audio while Fn is held (or toggled on).")
         print()
         print("These attach to your terminal app (Terminal/iTerm/Ghostty/etc.), not parrot itself.")
         print()
